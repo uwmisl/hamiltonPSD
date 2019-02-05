@@ -1,0 +1,11 @@
+0, No error
+1, Initialization error – occurs when the pump fails to initialize.
+2, Invalid command – occurs when an unrecognized command is used.
+3, Parameter out of range – occurs when parameter specifed for a command was not within the range of values acceptable for that command.
+4, Too many loops.
+6, EEPROM failure – occurs when the EEPROM is faulty.
+7, Syringe not initialized – occurs when the syringe fails to initialize.
+9, Syringe overload – occurs when the syringe encounters excessive back pressure.
+10, Valve overload – occurs when the valve drive encounters excessive back pressure.
+11, Syringe move not allowed – when the valve is in the bypass or throughput position, syringe move commands are not allowed.
+15, Pump is busy – occurs when the command buffer is full.
