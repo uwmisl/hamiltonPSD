@@ -1,6 +1,7 @@
 from time import sleep
 import serial
 import os
+from functools import reduce
 
 class PSD8(object):
   """
@@ -9,7 +10,6 @@ class PSD8(object):
 
   def __init__(self,port="COM6",baud=9600, speed = 7, debug = False):
     """ Interface for PSD8
-
       port(str): com port that the pump is plugged into
       baud (int): baud rate
       speed (int 1-40): default speed.
@@ -28,7 +28,7 @@ class PSD8(object):
     pth = os.path.dirname(os.path.abspath(__file__))
     with open(pth+"/"+"error_codes.csv",'rb') as codes:
       for line in codes:
-        toks = line.split(',')
+        toks = line.split(b',')
         key = int(toks[0])
         error = toks[1].strip()
         self.error_codes[key] = error
@@ -37,7 +37,7 @@ class PSD8(object):
   @staticmethod
   def _checksum(s):
     """ returns checksum as int """
-    return reduce(lambda x,y:x^(ord(y)), s, 0)
+    return reduce(lambda x,y:x^(ord(y)), str(s), 0)
 
   def _send(self,cmd,address=1):
     """TODO: handle retrys and sequence numbers correctly
@@ -46,26 +46,35 @@ class PSD8(object):
     retry_count = 10 #TODO: parameterize?
     repeat = 0
 
-    packet = ("\x02"+chr(ord("0")+address)+
-              chr( (self.sequence+ord("0"))|(0b00001000*repeat) ) +
-              cmd+"\x03")
+    print("enter _send")
+    packet = (b"\x02"+chr(ord("0")+address).encode()+
+              chr( (self.sequence+ord("0"))|(0b00001000*repeat) ).encode() +
+              cmd+b"\x03")
+    print(11)
     checksum = self._checksum(packet)
-    packet += chr(checksum)
+    packet += chr(checksum).encode()
 
+    print(12)
     while retry_count>0:
+      print(13)
       self.spt.reset_input_buffer()
+      print(14)
       self.spt.write(packet)
-      in_packet = ""
+      print(15)
+      in_packet = b""
 
       #how many times should we keep trying for data if we don't see the end?
       read_count = 10
-      while (len(in_packet)== 0 or in_packet[-2] != "\x03") and read_count>0:
+      while (len(in_packet)== 0 or in_packet[-2] != b"\x03") and read_count>0:
+        print(in_packet)
         sleep(8.0*len(packet)/self.spt.baudrate+0.01)
         read_count -=1
+        print(16)
         in_packet += self.spt.read(100)
+        print(17)
 
       #I have no idea where the extra 0xff byte is coming from
-      in_packet = in_packet.lstrip("\xff")
+      in_packet = in_packet.lstrip(b"\xff")
       try:
         #throws value error if there is a bad or no packet
         self._check_packet(in_packet)
@@ -89,7 +98,7 @@ class PSD8(object):
 
       throws: ValueError if packet is bad.
     """
-
+    print("enter check packet")
     #ensure it's addressed to me and complete
     if (not packet.startswith("\x020")) or packet[-2] != "\x03":
       raise ValueError("must be a complete response packet.  got: {}".format(str( map(ord,packet))))
@@ -106,7 +115,8 @@ class PSD8(object):
 
   def _ready_wait(self):
     """ blocks until ready """
-    while not self._check_packet(self._send("Q"))["ready"]:
+    while not self._check_packet(self._send(b'Q'))["ready"]:
+      print("sleep 0.1")
       sleep(0.1)
 
   def home(self,address = 1):
@@ -154,8 +164,11 @@ class PSD8(object):
     speed = int(speed)
     if speed < 1 or speed > 40:
       raise ValueError("speed must be between 1 and 40 (inclusive)")
+    print(1)
     self._ready_wait() #make sure this isn't sent while moving
+    print(2)
     self._send("S{}R".format(int(speed)),address)
+    print(3)
     self.speed = speed
 
   def mix(self,vol,n=3,speed=10,address=1):
