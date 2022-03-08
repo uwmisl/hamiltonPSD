@@ -138,33 +138,42 @@ class PSD8(object):
     while not self._check_packet(self._send("Q"))["ready"]:
       sleep(0.1)
 
-  def home(self,address = 1):
+  def home(self,address = 1, await_end=False):
     """ Homes pump to absolute 0 position """
     self._ready_wait()
     self._send("YR",address)
+    if await_end:
+      self._ready_wait()
 
-  def abs_position(self,position, address = 1):
+  def abs_position(self,position, address = 1, await_end=False):
     """ move pump to absolute position position (int)"""
     position = int(position)
     assert position>=0 and position<=3000
     self._ready_wait()
     self._send("A{}R".format(position),address)
+    if await_end:
+      self._ready_wait()
 
-  def dispense(self,steps,address=1):
+  def dispense(self,steps,address=1, await_end=False):
     """ moves syringe up steps (int, 3000=full volume)"""
     steps = int(steps)
     assert steps>=0 and steps<=3000
     self._ready_wait()
     self._send("D{}R".format(steps),address)
+    if await_end:
+      self._ready_wait()
 
-  def pickup(self,steps,address=1):
+  def pickup(self,steps,address=1, await_end=False):
     """ moves syringe down steps (int, 3000=full volume)"""
     steps = int(steps)
     assert steps>=0 and steps<=3000
     self._ready_wait()
     self._send("P{}R".format(steps),address)
+    if await_end:
+      self._ready_wait()
+      # add another sleep(0.5)
 
-  def set_valve(self,position,address=1):
+  def set_valve(self,position,address=1, await_end=False):
     """ pick valve position: "input" => right, "output" => left """
     self._ready_wait()
     position = position.lower()
@@ -172,8 +181,12 @@ class PSD8(object):
       self._send("IR",address)
     elif position.startswith("o"):
       self._send("OR",address)
+    else:
+      raise ValueError("invalid set_valve input")
+    if await_end:
+      self._ready_wait()
 
-  def set_speed(self,speed=None,address=1):
+  def set_speed(self,speed=None,address=1, await_end=False):
     """
     sets speed of pump to speed levels 1-40
     speed := 1 => fastest 1.2s per sstroke
@@ -187,8 +200,10 @@ class PSD8(object):
     self._ready_wait() #make sure this isn't sent while moving
     self._send("S{}R".format(int(speed)),address)
     self.speed = speed
+    if await_end:
+      self._ready_wait()
 
-  def mix(self,vol,n=3,speed=10,address=1):
+  def mix(self,vol,n=3,speed=10,address=1, await_end=False):
     old_speed = self.speed
     self.set_speed(speed,address)
     for _ in range(n):
@@ -199,13 +214,16 @@ class PSD8(object):
       self._ready_wait()
       sleep(1)
 
-    self.set_speed(old_speed,address)
+    # set speed will end with read_wait if requsted for mix
+    self.set_speed(old_speed,address, await_end)
 
-  def set_aux(self,aux_val,address=1):
+  def set_aux(self,aux_val,address=1, await_end=False):
     """
       aux_val (int): numerical value of msb-[aux3,aux2,aux1]-lsb
     """
     self._send("J{}R".format(int(aux_val)&0x07))
+    if await_end:
+      self._ready_wait()
 
 if __name__ == '__main__':
   p = PSD8()
